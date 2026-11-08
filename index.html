@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>المختبر الافتراضي المسرّع — نمو المستعمرات في طبق بتري</title>
+<style>
+  :root{
+    --bg:#080d13; --bg2:#0c141d; --panel:#111a24; --line:#1d2b3a;
+    --txt:#dbe8f5; --muted:#8aa2ba; --accent:#33d6a6; --accent2:#49a8ff;
+    --warn:#ffb454; --danger:#ff6b6b;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    margin:0; background:
+      radial-gradient(1200px 700px at 80% -10%, #12263a 0%, transparent 60%),
+      radial-gradient(900px 600px at 0% 110%, #10261f 0%, transparent 60%),
+      var(--bg);
+    color:var(--txt);
+    font-family:"Segoe UI", Tahoma, "Noto Kufi Arabic", system-ui, sans-serif;
+    overflow:hidden;
+  }
+  .wrap{height:100vh; display:flex; flex-direction:column; padding:12px; gap:10px}
+
+  header{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; padding-inline:6px}
+  header h1{margin:0; font-size:19px; letter-spacing:.2px}
+  header h1 span{color:var(--accent)}
+  header p{margin:0; color:var(--muted); font-size:12.5px}
+
+  .layout{
+    flex:1; min-height:0;
+    display:grid; grid-template-columns:1fr 350px; gap:12px;
+  }
+  @media (max-width:900px){
+    .layout{grid-template-columns:1fr; grid-template-rows:minmax(280px,1fr) auto; overflow:auto}
+    body{overflow:auto}
+    .wrap{height:auto}
+  }
+
+  .stage{
+    position:relative; border-radius:20px; overflow:hidden;
+    background:radial-gradient(circle at 50% 40%, #101c28 0%, #070c12 75%);
+    border:1px solid var(--line);
+    box-shadow:inset 0 0 80px rgba(0,0,0,.7);
+    min-height:280px;
+  }
+  #dish{position:absolute; inset:0; display:block; cursor:crosshair}
+
+  .hud{
+    position:absolute; top:12px; inset-inline-start:12px; display:flex; gap:8px; flex-wrap:wrap;
+    pointer-events:none;
+  }
+  .badge{
+    background:rgba(12,22,32,.78); border:1px solid var(--line); backdrop-filter:blur(6px);
+    padding:5px 10px; border-radius:999px; font-size:12px; color:var(--muted);
+  }
+  .badge b{color:var(--txt)}
+  .badge.live b{color:var(--accent)}
+
+  .panel{overflow-y:auto; padding-inline-end:4px; display:flex; flex-direction:column; gap:10px}
+  .panel::-webkit-scrollbar{width:8px}
+  .panel::-webkit-scrollbar-thumb{background:#1d2b3a; border-radius:8px}
+
+  .card{
+    background:linear-gradient(180deg, #121b25, #0e161f);
+    border:1px solid var(--line); border-radius:14px; padding:11px 12px;
+  }
+  .card h2{
+    margin:0 0 9px; font-size:12.5px; font-weight:700; color:var(--accent);
+    letter-spacing:.4px; display:flex; align-items:center; gap:6px;
+  }
+  .card h2::before{content:""; width:4px; height:13px; border-radius:3px; background:var(--accent)}
+
+  .seg{display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:8px}
+  .seg button{
+    padding:9px 4px; border-radius:10px; border:1px solid var(--line); cursor:pointer;
+    background:#0d1620; color:var(--muted); font-size:11.5px; font-family:inherit;
+    transition:.18s; line-height:1.35;
+  }
+  .seg button:hover{border-color:#2d445c; color:var(--txt)}
+  .seg button.active{
+    background:linear-gradient(180deg,#1b6d57,#134d3e); color:#dcfff5;
+    border-color:#2f9e7f; box-shadow:0 0 0 1px rgba(51,214,166,.25), 0 6px 18px -8px #33d6a6;
+  }
+  .switch{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); cursor:pointer}
+  .switch input{accent-color:var(--accent); width:15px; height:15px; cursor:pointer}
+
+  .ctrl{margin-bottom:11px}
+  .ctrl:last-child{margin-bottom:0}
+  .row{display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:5px}
+  .row span{color:var(--muted)}
+  .row b{color:var(--txt); font-variant-numeric:tabular-nums}
+
+  input[type=range]{
+    -webkit-appearance:none; appearance:none; width:100%; height:5px; border-radius:5px;
+    background:linear-gradient(90deg,#33d6a6 var(--p,50%), #1b2733 var(--p,50%));
+    outline:none; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+    background:#eaf7ff; border:3px solid #33d6a6; cursor:pointer;
+    box-shadow:0 0 10px rgba(51,214,166,.6);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:14px;height:14px;border-radius:50%;background:#eaf7ff;border:3px solid #33d6a6;cursor:pointer;
+  }
+
+  .btns{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px}
+  button.act{
+    padding:10px; border-radius:11px; border:1px solid var(--line); cursor:pointer;
+    background:#0d1620; color:var(--txt); font-family:inherit; font-size:13px; font-weight:600;
+    transition:.18s;
+  }
+  button.act:hover{border-color:#2d445c; background:#111d29}
+  button.act.primary{
+    background:linear-gradient(180deg,#1f9b78,#137a5c); border-color:#2fbd93; color:#e9fffa;
+  }
+  button.act.primary.on{background:linear-gradient(180deg,#a2453a,#7c322a); border-color:#c4604f}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:7px}
+  .stat{
+    background:#0b131b; border:1px solid #172533; border-radius:10px; padding:7px 9px;
+  }
+  .stat span{display:block; font-size:10.5px; color:var(--muted); margin-bottom:3px}
+  .stat b{font-size:14.5px; font-variant-numeric:tabular-nums; letter-spacing:.3px}
+  .stat b.ok{color:var(--accent)}
+  .stat b.warn{color:var(--warn)}
+  .stat b.bad{color:var(--danger)}
+
+  #chart{width:100%; height:auto; display:block; margin-top:9px; border-radius:8px; background:#0a1219}
+
+  .log{
+    height:104px; overflow-y:auto; font-size:11.5px; line-height:1.75; color:var(--muted);
+    display:flex; flex-direction:column; gap:2px;
+  }
+  .log div::before{content:"› "; color:var(--accent)}
+  .log::-webkit-scrollbar{width:6px}
+  .log::-webkit-scrollbar-thumb{background:#1d2b3a; border-radius:8px}
+  .hint{font-size:10.5px; color:#5d7governance}
+  .note{font-size:10.5px; color:#6c8399; margin-top:6px; line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🧫 المختبر الافتراضي <span>المسرّع</span></h1>
+    <p>محاكاة نمو المستعمرات — بكتيريا · فطريات · كائنات أولية — في طبق بتري</p>
+  </header>
+
+  <div class="layout">
+    <!-- ============ المسرح ============ -->
+    <main class="stage" id="stage">
+      <canvas id="dish"></canvas>
+      <div class="hud">
+        <div class="badge live">⏱ <b id="hudTime">0.0</b> ساعة</div>
+        <div class="badge">🧪 <b id="hudCount">0</b> مستعمرة</div>
+        <div class="badge">📊 تغطية <b id="hudCov">0%</b></div>
+        <div class="badge" id="hudState">⏸ متوقف</div>
+      </div>
+    </main>
+
+    <!-- ============ لوحة التحكم ============ -->
+    <aside class="panel">
+
+      <section class="card">
+        <h2>نوع الكائن</h2>
+        <div class="seg" id="typeSeg">
+          <button data-type="bacteria" class="active">🦠<br>بكتيريا</button>
+          <button data-type="fungi">🍄<br>فطريات</button>
+          <button data-type="protozoa">🧫<br>كائنات أولية</button>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="mixed"> مزرعة مختلطة (الأنواع الثلاثة)
+        </label>
+      </section>
+
+      <section class="card">
+        <h2>الظروف البيئية</h2>
+
+        <div class="ctrl">
+          <div class="row"><span>الحرارة</span><b id="vTemp">37 °م</b></div>
+          <input type="range" id="temp" min="4" max="55" step="1" value="37">
+        </div>
+
+        <div class="ctrl">
+          <div class="row"><span>الأس الهيدروجيني pH</span><b id="vPh">7.0</b></div>
+          <input type="range" id="ph" min="3" max="10" step="0.1" value="7">
+        </div>
+
+        <div class="ctrl">
+          <div class="row"><span>المغذيات (الأجار)</span><b id="vNut">70%</b></div>
+          <input type="range" id="nut" min="0" max="100" step="1" value="70">
+        </div>
+
+        <div class="ctrl">
+          <div class="row"><span>مضاد حيوي</span><b id="vAb">0%</b></div>
+          <input type="range" id="ab" min="0" max="100" step="1" value="0">
+          <div class="note" id="abNote">الفعالية: بكتيريا 100% · كائنات أولية 45% · فطريات 5%</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>الزمن المسرّع</h2>
+        <div class="row"><span>سرعة المحاكاة</span><b id="vSpeed">12 ساعة/ثانية</b></div>
+        <input type="range" id="speed" min="0.5" max="60" step="0.5" value="12">
+        <div class="btns">
+          <button class="act primary" id="playBtn">⏸ إيقاف</button>
+          <button class="act" id="resetBtn">⟲ إعادة</button>
+        </div>
+        <div class="note">💡 انقر داخل الطبق لإضافة مستعمرة يدوياً · مسطرة المسافة = تشغيل/إيقاف</div>
+      </section>
+
+      <section class="card">
+        <h2>القياسات الحيّة</h2>
+        <div class="grid2">
+          <div class="stat"><span>الزمن المنقضي</span><b id="sTime">0.0 س</b></div>
+          <div class="stat"><span>عدد المستعمرات</span><b id="sCount">0</b></div>
+          <div class="stat"><span>نسبة التغطية</span><b id="sCov">0%</b></div>
+          <div class="stat"><span>معدل النمو</span><b id="sRate">—</b></div>
+        </div>
+        <div class="stat" style="margin-top:7px">
+          <span>الظروف المثلى للنوع الحالي</span><b id="sOpt" style="font-size:12.5px">—</b>
+        </div>
+        <canvas id="chart" width="600" height="180"></canvas>
+      </section>
+
+      <section class="card">
+        <h2>سجل المختبر</h2>
+        <div class="log" id="log"></div>
+      </section>
+
+    </aside>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const TAU = Math.PI * 2;
+
+/* ============================================================
+   1) تعريف الكائنات — معاملات النمو والظروف المثلى
+   ============================================================ */
+const TYPES = {
+  bacteria: {
+    key:'bacteria', name:'بكتيريا',
+    color:'#e9f39a',
+    maxR:[14,30],         // نصف قطر المستعمرة الناضجة (بكسل)
+    matureHours:[25,45],  // زمن النضوج التقريبي
+    spawn:0.95,           // معدل ظهور مستعمرات جديدة / ساعة
+    opt:{ temp:37, tTol:8, ph:7.0, pTol:1.6 },
+    ab:1.00,              // حساسية المضاد الحيوي
+    ideal:'37°م · pH 7.0'
+  },
+  fungi: {
+    key:'fungi', name:'فطريات',
+    color:'#dff2f6',
+    maxR:[26,58],
+    matureHours:[28,50],
+    spawn:0.55,
+    opt:{ temp:28, tTol:11, ph:5.5, pTol:2.2 },
+    ab:0.05,
+    ideal:'28°م · pH 5.5'
+  },
+  protozoa: {
+    key:'protozoa', name:'كائنات أولية',
+    color:'#bfe3ff',
+    maxR:[10,24],
+    matureHours:[30,55],
+    spawn:0.40,
+    opt:{ temp:25, tTol:7, ph:6.8, pTol:1.8 },
+    ab:0.45,
+    ideal:'25°م · pH 6.8'
+  }
+};
+const MAXC = 420;
+
+/* ============================================================
+   2) الحالة
+   ============================================================ */
+const state = {
+  running:true,
+  type:'bacteria',
+  mixed:false,
+  temp:37, ph:7, nutrients:70, antibiotic:0,
+  speed:12,                 // ساعة محاكاة / ثانية حقيقية
+  simHours:0,
+  colonies:[],
+  nextId:1,
+  spawnAcc:0,
+  coverage:0,
+  history:[],
+  milestones:{25:false,50:false,75:false,90:false}
+};
+
+/* ============================================================
+   3) الكانفس + الأبعاد
+   ============================================================ */
+const stage = document.getElementById('stage');
+const cvs   = document.getElementById('dish');
+const ctx   = cvs.getContext('2d');
+const chartCvs = document.getElementById('chart');
+const cctx  = chartCvs.getContext('2d');
+
+const dish = { cx:0, cy:0, R:100 };
+let W = 0, H = 0, DPR = 1;
+
+/* بقع الأجار (ثابتة) */
+const speckles = [];
+for(let i=0;i<300;i++){
+  speckles.push({
+    a: Math.random()*TAU,
+    rr: Math.sqrt(Math.random()),
+    s: 0.5 + Math.random()*1.8,
+    al: 0.025 + Math.random()*0.06
+  });
+}
+
+function resize(){
+  const rect = stage.getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = Math.max(200, rect.width);
+  H = Math.max(200, rect.height);
+  cvs.width  = Math.round(W * DPR);
+  cvs.height = Math.round(H * DPR);
+  cvs.style.width  = W + 'px';
+  cvs.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  dish.cx = W / 2;
+  dish.cy = H / 2;
+  dish.R  = Math.min(W, H) * 0.43;
+}
+new ResizeObserver(resize).observe(stage);
+window.addEventListener('resize', resize);
+
+/* ============================================================
+   4) نموذج النمو
+   ============================================================ */
+
+/* معامل البيئة 0..1 */
+function envFactor(typeKey){
+  const o = TYPES[typeKey].opt;
+  const fT = Math.exp(-Math.pow((state.temp - o.temp) / o.tTol, 2));
+  const fP = Math.exp(-Math.pow((state.ph   - o.ph)   / o.pTol, 2));
+  const fN = 0.12 + 0.88 * (state.nutrients / 100);
+  const fA = 1 - TYPES[typeKey].ab * (state.antibiotic / 100);
+  return Math.max(0, Math.min(1, fT * fP * fN * fA));
+}
+
+function randInDish(){
+  const a  = Math.random() * TAU;
+  const rr = Math.sqrt(Math.random()) * dish.R * 0.90;
+  return { x: dish.cx + Math.cos(a)*rr, y: dish.cy + Math.sin(a)*rr };
+}
+
+function pickType(){
+  if(!state.mixed) return state.type;
+  const k = ['bacteria','fungi','protozoa'];
+  return k[(Math.random()*3)|0];
+}
+
+function spawnColony(x, y, typeKey){
+  if(state.colonies.length >= MAXC) return null;
+  const t = typeKey || pickType();
+  const T = TYPES[t];
+  const p = (x === undefined) ? randInDish() : { x, y };
+
+  const maxR = T.maxR[0] + Math.random()*(T.maxR[1]-T.maxR[0]);
+  const hours = T.matureHours[0] + Math.random()*(T.matureHours[1]-T.matureHours[0]);
+
+  const c = {
+    id: state.nextId++,
+    type: t,
+    x: p.x, y: p.y,
+    r: 1.2,
+    maxR,
+    growth: maxR / hours,     // بكسل/ساعة عند أفضل الظروف
+    age: 0,
+    health: 1,
+    seed: Math.random()*1000
+  };
+  state.colonies.push(c);
+  return c;
+}
+
+/* خطوة زمنية */
+function step(dt){
+  const dtH = dt * state.speed;         // ساعات محاكاة
+  state.simHours += dtH;
+
+  /* --- نمو المستعمرات (نموذج لوجستي) --- */
+  for(let i=0;i<state.colonies.length;i++){
+    const c = state.colonies[i];
+    c.health = envFactor(c.type);
+
+    if(c.r < c.maxR){
+      const lag = Math.min(1, c.age / 1.5 + 0.12);          // طور التكيّف
+      const logistic = Math.max(0, 1 - c.r / c.maxR);        // الإشباع
+      c.r += c.growth * c.health * lag * logistic * dtH;
+      if(c.r > c.maxR) c.r = c.maxR;
+    }
+    c.age += dtH;
+  }
+
+  /* --- التغطية --- */
+  let area = 0;
+  for(let i=0;i<state.colonies.length;i++){
+    const r = state.colonies[i].r;
+    area += Math.PI * r * r;
+  }
+  const dishArea = Math.PI * dish.R * dish.R;
+  state.coverage = Math.min(1, area / dishArea);
+
+  /* --- ظهور مستعمرات جديدة (انقسام / أبواغ) --- */
+  const room = Math.max(0, 1 - state.coverage / 0.88);
+  const pressure = TYPES[state.type].spawn * envFactor(state.type) * room * (state.mixed ? 1.7 : 1);
+  state.spawnAcc += dtH * pressure;
+
+  let guard = 0;
+  while(state.spawnAcc >= 1 && state.colonies.length < MAXC && guard++ < 60){
+    state.spawnAcc -= 1;
+    spawnColony();
+  }
+  if(room <= 0) state.spawnAcc = 0;
+
+  /* --- إنجازات السجل --- */
+  const pct = state.coverage * 100;
+  [25,50,75,90].forEach(m=>{
+    if(!state.milestones[m] && pct >= m){
+      state.milestones[m] = true;
+      logMsg(`تغطية ${m}% من الطبق — ${state.colonies.length} مستعمرة`);
+    }
+  });
+}
+
+/* ============================================================
+   5) الرسم
+   ============================================================ */
+function drawColony(c, t){
+  const T = TYPES[c.type];
+  ctx.save();
+  ctx.translate(c.x, c.y);
+  ctx.globalAlpha = 0.55 + 0.45 * c.health;
+
+  if(c.type === 'bacteria'){
+    ctx.fillStyle = T.color;
+    ctx.beginPath(); ctx.arc(0,0,c.r,0,TAU); ctx.fill();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.33)';
+    ctx.beginPath(); ctx.arc(-c.r*0.22, -c.r*0.24, c.r*0.50, 0, TAU); ctx.fill();
+
+    ctx.strokeStyle = 'rgba(70,85,30,0.35)';
+    ctx.lineWidth = Math.max(0.6, c.r*0.07);
+    ctx.beginPath(); ctx.arc(0,0,c.r*0.95,0,TAU); ctx.stroke();
+
+  } else if(c.type === 'fungi'){
+    const n = Math.min(24, Math.max(10, Math.round(c.r*0.85)));
+    ctx.strokeStyle = 'rgba(226,246,242,0.50)';
+    ctx.lineWidth = Math.max(0.6, c.r*0.030);
+    ctx.beginPath();
+    for(let i=0;i<n;i++){
+      const a = c.seed + i*(TAU/n);
+      const len = c.r*(1 + 0.16*Math.sin(c.seed*2.7 + i*1.9));
+      ctx.moveTo(Math.cos(a)*c.r*0.30, Math.sin(a)*c.r*0.30);
+      ctx.lineTo(Math.cos(a)*len,      Math.sin(a)*len);
+    }
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(214,242,236,0.72)';
+    ctx.beginPath(); ctx.arc(0,0,c.r*0.60,0,TAU); ctx.fill();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.50)';
+    ctx.beginPath(); ctx.arc(-c.r*0.16,-c.r*0.16,c.r*0.26,0,TAU); ctx.fill();
+
+  } else {
+    const N = 16;
+    ctx.beginPath();
+    for(let i=0;i<=N;i++){
+      const a = i/N * TAU;
+      const wob = 1 + 0.14*Math.sin(i*2.1 + c.seed) + 0.06*Math.sin(t*1.2 + i*1.7);
+      const rr = c.r * wob;
+      const x = Math.cos(a)*rr, y = Math.sin(a)*rr;
+      i ? ctx.lineTo(x,y) : ctx.moveTo(x,y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(150,205,250,0.70)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(220,240,255,0.50)';
+    ctx.lineWidth = Math.max(0.6, c.r*0.05);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(120,190,255,0.55)';
+    ctx.beginPath(); ctx.arc(c.r*0.22, c.r*0.12, c.r*0.20, 0, TAU); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function draw(t){
+  ctx.clearRect(0,0,W,H);
+
+  /* ظل الطبق */
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.75)';
+  ctx.shadowBlur  = 40;
+  ctx.shadowOffsetY = 14;
+  ctx.beginPath(); ctx.arc(dish.cx, dish.cy, dish.R, 0, TAU);
+  ctx.fillStyle = '#0b1119'; ctx.fill();
+  ctx.restore();
+
+  /* محتوى الطبق */
+  ctx.save();
+  ctx.beginPath(); ctx.arc(dish.cx, dish.cy, dish.R, 0, TAU); ctx.clip();
+
+  /* الأجار */
+  const g = ctx.createRadialGradient(
+    dish.cx, dish.cy - dish.R*0.35, dish.R*0.05,
+    dish.cx, dish.cy, dish.R*1.25
+  );
+  g.addColorStop(0,   '#f5ecc9');
+  g.addColorStop(0.55,'#e6d7a0');
+  g.addColorStop(1,   '#c9b374');
+  ctx.fillStyle = g;
+  ctx.fillRect(dish.cx-dish.R, dish.cy-dish.R, dish.R*2, dish.R*2);
+
+  /* بقع الأجار */
+  for(let i=0;i<speckles.length;i++){
+    const s = speckles[i];
+    const x = dish.cx + Math.cos(s.a)*s.rr*dish.R*0.98;
+    const y = dish.cy + Math.sin(s.a)*s.rr*dish.R*0.98;
+    ctx.fillStyle = 'rgba(90,70,30,' + s.al + ')';
+    ctx.beginPath(); ctx.arc(x, y, s.s, 0, TAU); ctx.fill();
+  }
+
+  /* المستعمرات */
+  for(let i=0;i<state.colonies.length;i++) drawColony(state.colonies[i], t);
+
+  ctx.restore();
+
+  /* حافة الطبق */
+  ctx.beginPath(); ctx.arc(dish.cx, dish.cy, dish.R, 0, TAU);
+  ctx.lineWidth = Math.max(3, dish.R*0.045);
+  ctx.strokeStyle = 'rgba(220,245,255,0.14)';
+  ctx.stroke();
+
+  ctx.beginPath(); ctx.arc(dish.cx, dish.cy, dish.R*1.015, 0, TAU);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(73,168,255,0.28)';
+  ctx.stroke();
+
+  /* انعكاس الغطاء */
+  ctx.beginPath();
+  ctx.arc(dish.cx - dish.R*0.22, dish.cy - dish.R*0.26, dish.R*0.62, Math.PI*1.06, Math.PI*1.56);
+  ctx.lineWidth = Math.max(4, dish.R*0.06);
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+  ctx.stroke();
+}
+
+/* ============================================================
+   6) المخطط البياني للتغطية
+   ============================================================ */
+function drawChart(){
+  const w = chartCvs.width, h = chartCvs.height;
+  cctx.clearRect(0,0,w,h);
+
+  /* شبكة */
+  cctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  cctx.lineWidth = 1;
+  for(let i=0;i<=4;i++){
+    const y = (h-16) * i/4 + 8;
+    cctx.beginPath(); cctx.moveTo(8,y); cctx.lineTo(w-8,y); cctx.stroke();
+  }
+  cctx.fillStyle = 'rgba(138,162,186,0.75)';
+  cctx.font = '16px system-ui, sans-serif';
+  cctx.fillText('100%', w-52, 24);
+  cctx.fillText('0%',   w-40, h-8);
+
+  const H2 = state.history;
+  if(H2.length < 2) return;
+
+  const tMax = Math.max(H2[H2.length-1].t, 0.001);
+  const px = v => 8 + (v / tMax) * (w - 60);
+  const py = v => (h - 16) - v * (h - 32);
+
+  /* مساحة */
+  cctx.beginPath();
+  cctx.moveTo(px(H2[0].t), py(H2[0].c));
+  for(let i=1;i<H2.length;i++) cctx.lineTo(px(H2[i].t), py(H2[i].c));
+  cctx.lineTo(px(H2[H2.length-1].t), py(0));
+  cctx.lineTo(px(H2[0].t), py(0));
+  cctx.closePath();
+  const grad = cctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0,'rgba(51,214,166,0.35)');
+  grad.addColorStop(1,'rgba(51,214,166,0.02)');
+  cctx.fillStyle = grad; cctx.fill();
+
+  /* خط */
+  cctx.beginPath();
+  cctx.moveTo(px(H2[0].t), py(H2[0].c));
+  for(let i=1;i<H2.length;i++) cctx.lineTo(px(H2[i].t), py(H2[i].c));
+  cctx.strokeStyle = '#33d6a6';
+  cctx.lineWidth = 2.4;
+  cctx.lineJoin = 'round';
+  cctx.stroke();
+}
+
+/* ============================================================
+   7) السجل
+   ============================================================ */
+const logEl = document.getElementById('log');
+function logMsg(txt){
+  const d = document.createElement('div');
+  d.textContent = txt;
+  logEl.prepend(d);
+  while(logEl.children.length > 40) logEl.lastChild.remove();
+}
+
+/* ============================================================
+   8) واجهة المستخدم
+   ============================================================ */
+const el = id => document.getElementById(id);
+const ui = {
+  hudTime: el('hudTime'), hudCount: el('hudCount'), hudCov: el('hudCov'), hudState: el('hudState'),
+  sTime: el('sTime'), sCount: el('sCount'), sCov: el('sCov'), sRate: el('sRate'), sOpt: el('sOpt'),
+  vTemp: el('vTemp'), vPh: el('vPh'), vNut: el('vNut'), vAb: el('vAb'), vSpeed: el('vSpeed'),
+  playBtn: el('playBtn'), resetBtn: el('resetBtn')
+};
+
+function paintRange(input){
+  const min = +input.min, max = +input.max, v = +input.value;
+  const p = ((v - min) / (max - min)) * 100;
+  input.style.setProperty('--p', p + '%');
+}
+
+function stateLabel(env){
+  if(!state.running) return '⏸ متوقف';
+  if(env > 0.75) return '🚀 نمو سريع';
+  if(env > 0.35) return '🌱 نمو متوسط';
+  if(env > 0.08) return '🐌 نمو بطيء';
+  return '⛔ توقف النمو';
+}
+
+let lastUI = 0;
+function updateUI(now){
+  if(now - lastUI < 90) return;
+  lastUI = now;
+
+  const env = envFactor(state.type);
+  const pct = state.coverage * 100;
+
+  ui.hudTime.textContent  = state.simHours.toFixed(1);
+  ui.hudCount.textContent = state.colonies.length;
+  ui.hudCov.textContent   = pct.toFixed(1) + '%';
+  ui.hudState.textContent = stateLabel(env);
+
+  ui.sTime.textContent  = state.simHours.toFixed(1) + ' س';
+  ui.sCount.textContent = state.colonies.length;
+  ui.sCov.textContent   = pct.toFixed(1) + '%';
+
+  const rate = ui.sRate;
+  rate.textContent = (env*100).toFixed(0) + '%';
+  rate.className = env > 0.75 ? 'ok' : env > 0.35 ? 'warn' : 'bad';
+
+  ui.sOpt.textContent = TYPES[state.type].name + ' — ' + TYPES[state.type].ideal;
+}
+
+/* -------- عناصر التحكم -------- */
+const tempIn = el('temp'), phIn = el('ph'), nutIn = el('nut'),
+      abIn = el('ab'), speedIn = el('speed'), mixedIn = el('mixed');
+
+function syncLabels(){
+  ui.vTemp.textContent  = state.temp + ' °م';
+  ui.vPh.textContent    = state.ph.toFixed(1);
+  ui.vNut.textContent   = state.nutrients + '%';
+  ui.vAb.textContent    = state.antibiotic + '%';
+  ui.vSpeed.textContent = state.speed + ' ساعة/ثانية';
+  [tempIn, phIn, nutIn, abIn, speedIn].forEach(paintRange);
+}
+
+tempIn.addEventListener('input', e=>{ state.temp = +e.target.value; syncLabels(); });
+phIn.addEventListener('input',   e=>{ state.ph = +e.target.value; syncLabels(); });
+nutIn.addEventListener('input',  e=>{ state.nutrients = +e.target.value; syncLabels(); });
+abIn.addEventListener('input',   e=>{ state.antibiotic = +e.target.value; syncLabels(); });
+speedIn.addEventListener('input',e=>{ state.speed = +e.target.value; syncLabels(); });
+
+tempIn.addEventListener('change', ()=> logMsg('ضبط الحرارة على ' + state.temp + ' °م'));
+phIn.addEventListener('change',   ()=> logMsg('ضبط pH على ' + state.ph.toFixed(1)));
+abIn.addEventListener('change',   ()=> {
+  if(state.antibiotic > 0) logMsg('إضافة مضاد حيوي بتركيز ' + state.antibiotic + '%');
+});
+
+/* نوع الكائن */
+document.querySelectorAll('#typeSeg button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#typeSeg button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    state.type = btn.dataset.type;
+    logMsg('تغيير الكائن إلى: ' + TYPES[state.type].name);
+  });
+});
+
+mixedIn.addEventListener('change', e=>{
+  state.mixed = e.target.checked;
+  logMsg(state.mixed ? 'تفعيل المزرعة المختلطة (3 أنواع)' : 'إلغاء المزرعة المختلطة');
+});
+
+/* تشغيل / إيقاف */
+function setRunning(v){
+  state.running = v;
+  ui.playBtn.textContent = v ? '⏸ إيقاف' : '▶ تشغيل';
+  ui.playBtn.classList.toggle('on', !v);
+  logMsg(v ? 'بدء المحاكاة' : 'إيقاف مؤقت');
+}
+ui.playBtn.addEventListener('click', ()=> setRunning(!state.running));
+
+document.addEventListener('keydown', e=>{
+  if(e.code === 'Space' && e.target.tagName !== 'INPUT'){
+    e.preventDefault();
+    setRunning(!state.running);
+  }
+});
+
+/* إعادة */
+ui.resetBtn.addEventListener('click', ()=>{
+  state.colonies = [];
+  state.simHours = 0;
+  state.spawnAcc = 0;
+  state.coverage = 0;
+  state.nextId = 1;
+  state.history = [];
+  state.milestones = {25:false,50:false,75:false,90:false};
+  logEl.innerHTML = '';
+
+  for(let i=0;i<3;i++){
+    const a = Math.random()*TAU, rr = Math.sqrt(Math.random())*dish.R*0.55;
+    spawnColony(dish.cx + Math.cos(a)*rr, dish.cy + Math.sin(a)*rr, state.type);
+  }
+  logMsg('إعادة تهيئة الطبق — 3 مستعمرات بادئة');
+  drawChart();
+});
+
+/* نقر على الطبق لإضافة مستعمرة */
+cvs.addEventListener('click', e=>{
+  const rect = cvs.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const dx = x - dish.cx, dy = y - dish.cy;
+  if(Math.hypot(dx,dy) < dish.R * 0.96){
+    if(spawnColony(x, y, state.type)){
+      logMsg('زرع مستعمرة يدوياً — ' + TYPES[state.type].name);
+    }
+  }
+});
+
+/* ============================================================
+   9) حلقة المحاكاة الرئيسية
+   ============================================================ */
+let last = performance.now();
+let lastHist = 0;
+
+function loop(now){
+  let dt = (now - last) / 1000;
+  last = now;
+  if(dt > 0.07) dt = 0.07;    // حماية من القفزات
+
+  if(state.running) step(dt);
+
+  draw(now / 1000);
+  updateUI(now);
+
+  /* تسجيل تاريخ التغطية للمخطط */
+  if(now - lastHist > 220){
+    lastHist = now;
+    state.history.push({ t: state.simHours, c: state.coverage });
+    if(state.history.length > 500) state.history.shift();
+    drawChart();
+  }
+
+  requestAnimationFrame(loop);
+}
+
+/* ============================================================
+   10) الإقلاع
+   ============================================================ */
+resize();
+syncLabels();
+
+/* 3 مستعمرات بادئة */
+(function seed(){
+  for(let i=0;i<3;i++){
+    const a = Math.random()*TAU, rr = Math.sqrt(Math.random())*dish.R*0.5;
+    spawnColony(dish.cx + Math.cos(a)*rr, dish.cy + Math.sin(a)*rr, state.type);
+  }
+})();
+
+logMsg('المختبر جاهز — بكتيريا عند 37°م و pH 7.0');
+logMsg('بدء المحاكاة المسرّعة');
+drawChart();
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>
